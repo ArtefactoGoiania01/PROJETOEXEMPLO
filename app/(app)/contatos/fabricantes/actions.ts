@@ -1,0 +1,42 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+
+import { prisma } from "@/lib/db";
+import { requireSession } from "@/lib/rbac";
+import { fabricanteSchema } from "@/lib/validators/contatos";
+
+function parseFormData(formData: FormData) {
+  return fabricanteSchema.safeParse({
+    nome: formData.get("nome"),
+  });
+}
+
+export async function criarFabricante(formData: FormData) {
+  await requireSession();
+  const parsed = parseFormData(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  await prisma.fabricante.create({ data: parsed.data });
+  revalidatePath("/contatos/fabricantes");
+  return {};
+}
+
+export async function atualizarFabricante(id: string, formData: FormData) {
+  await requireSession();
+  const parsed = parseFormData(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  await prisma.fabricante.update({ where: { id }, data: parsed.data });
+  revalidatePath("/contatos/fabricantes");
+  return {};
+}
+
+export async function excluirFabricante(id: string) {
+  await requireSession();
+  await prisma.fabricante.delete({ where: { id } });
+  revalidatePath("/contatos/fabricantes");
+  return {};
+}

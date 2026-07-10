@@ -140,6 +140,31 @@ export const motivosPerda: MotivoPerda[] = [
   { id: "motivo-desistiu", nome: "Desistiu da compra", ativo: true },
 ];
 
+export type Produto = {
+  id: string;
+  nome: string;
+  categoriaId: string | null;
+  fabricanteId: string | null;
+  valorUnitario: string;
+  unidade: string;
+  descricao: string | null;
+};
+
+export type ItemOrcamento = {
+  id: string;
+  produtoId: string | null;
+  descricao: string;
+  quantidade: number;
+  precoUnitario: string;
+};
+
+export type Orcamento = {
+  negocioId: string;
+  numero: number;
+  rt: string;
+  itens: ItemOrcamento[];
+};
+
 export const etapasFunil: EtapaFunil[] = [
   { id: "etapa-1", nome: "INÍCIO DE DESENVOLVIMENTO (VENDEDOR)", ordem: 0, cor: "#94a3b8" },
   {
@@ -210,6 +235,43 @@ export const negocios: Negocio[] = clientes.map((cliente, i) => ({
   motivoPerdaId: null,
   inicio: new Date(),
   temAtividade: false,
+}));
+
+export const produtos: Produto[] = [
+  {
+    id: "produto-1",
+    nome: "Sofá Modular Nuvem",
+    categoriaId: "categoria-1",
+    fabricanteId: "fabricante-1",
+    valorUnitario: "8990.00",
+    unidade: "unidades",
+    descricao: "Sofá modular 3 lugares, tecido linho",
+  },
+  {
+    id: "produto-2",
+    nome: "Mesa de Jantar Carvalho",
+    categoriaId: "categoria-1",
+    fabricanteId: "fabricante-1",
+    valorUnitario: "6500.00",
+    unidade: "unidades",
+    descricao: "Mesa 220x100cm em madeira maciça",
+  },
+  {
+    id: "produto-3",
+    nome: "Poltrona Aconchego",
+    categoriaId: "categoria-1",
+    fabricanteId: "fabricante-1",
+    valorUnitario: "2450.00",
+    unidade: "unidades",
+    descricao: null,
+  },
+];
+
+export const orcamentos: Orcamento[] = negocios.map((n, i) => ({
+  negocioId: n.id,
+  numero: 19820000 + i,
+  rt: "12.74",
+  itens: [],
 }));
 
 export function novoId(prefix: string) {

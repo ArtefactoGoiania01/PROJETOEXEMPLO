@@ -64,33 +64,43 @@ usuários) já vêm carregados em `lib/mock-data.ts`.
   /(app)/negocios              → Funil (Kanban) — Etapa 2, versão simplificada
     /lista                     → tabela de todos os negócios
     /sem-acompanhamento        → negócios abertos sem atividade
-    /orcamentos, /motivos-perda, /vendedores, /margem-lucro, /cupons,
-    /pedidos-compra, /lixeira, /banco-mensagens, /formas-pagamento
-                               → submenu de Negócios (placeholders — Etapas 3-4)
+    /orcamentos                → lista de orçamentos (Etapa 3)
+    /[id]/orcamento            → editor de orçamento simplificado (Etapa 3)
+    /motivos-perda, /vendedores, /margem-lucro, /cupons, /pedidos-compra,
+    /lixeira, /banco-mensagens, /formas-pagamento
+                               → submenu de Negócios (placeholders — Etapa 4)
   /(app)/contatos              → CRUD funcionais (Etapa 1)
     /clientes, /especificadores, /escritorios, /construtoras,
     /fabricantes, /categorias, /usuarios
-  /(app)/arquivos, /agenda, /relatorios, /captacao, /produtos, /exportacao
-                               → placeholders (Etapas 3-4)
+  /(app)/produtos              → catálogo de produtos, CRUD simples (Etapa 3)
+  /(app)/arquivos, /agenda, /relatorios, /captacao, /exportacao
+                               → placeholders (Etapa 4)
 
 /components
   /ui                          → primitivos estilo shadcn/ui (Radix + CVA)
   /layout                      → sidebar, topbar, submenus, nav-config
   /contatos/entity-manager.tsx → tabela + dialog de CRUD genérico e reutilizável
                                   entre todas as entidades de cadastro simples
+                                  (reaproveitado por Produtos)
   /negocios/kanban-board.tsx   → board com @dnd-kit (drag-and-drop entre
                                   etapas); kanban-board-client.tsx carrega
                                   sem SSR (dnd-kit gera ids que divergem
                                   entre servidor/cliente e quebram hidratação)
   /negocios/negocio-detail-dialog.tsx → ficha simplificada do negócio
-                                  (dados principais + Vendido/Cancelado)
+                                  (dados principais, botão "Abrir negócio"
+                                  → editor de orçamento, Vendido/Cancelado)
+  /negocios/itens-orcamento.tsx → tabela de itens do orçamento + dialog de
+                                  adicionar produto (autofill a partir do
+                                  catálogo ou item avulso)
 
 /lib
   mock-data.ts                  → todos os "dados" do app: arrays mutáveis
                                    em memória (clientes, negócios, usuários,
-                                   etapas do funil, motivos de perda etc.)
+                                   etapas do funil, motivos de perda, produtos,
+                                   orçamentos etc.)
   labels/pt-BR.ts               → labels e formatação (moeda, data) centralizados
   validators/contatos.ts        → schemas Zod dos cadastros
+  validators/produtos.ts        → schemas Zod de produto e item de orçamento
 
 /tests                          → Vitest (unit)
 wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
@@ -151,10 +161,30 @@ mini-calendário, abas "Venda Realizada"/"Venda Cancelada", busca/filtro de
 cartões (a busca no topo é só visual), badge de atividade real (todo card
 mostra "Sem atividades" fixo, já que não há tela de criar atividade ainda).
 
+## Etapa 3 — versão simplificada (a pedido do usuário)
+
+Mesma diretriz da Etapa 2: implementação enxuta, sem a complexidade
+completa do PROMPT MESTRE. Implementado:
+
+- Catálogo de Produtos (`/produtos`): CRUD simples (nome, categoria,
+  fabricante, valor unitário, unidade, descrição), reaproveitando o
+  `EntityManager` genérico da Etapa 1.
+- Editor de Orçamento (`/negocios/[id]/orcamento`), acessível pelo botão
+  "Abrir negócio" na ficha do Kanban: Dados Gerais (cliente, responsável,
+  especificador, escritório, RT) + tabela de itens. "Adicionar Produto"
+  abre um dialog que autopreenche descrição/preço ao escolher um item do
+  catálogo (ou aceita um item avulso). Total do orçamento sincroniza com o
+  `valor` do negócio (reflete no Kanban e nas listas).
+- `/negocios/orcamentos`: lista de orçamentos com link para cada um.
+
+**Não implementado nesta etapa** (fora de escopo por decisão de produto):
+versionamento de orçamento, abas Status/Produtos removidos/Inserir por
+Excel, geração de PDF, Pedido de compra, upload de imagens de produto
+(Detalhes/Imagens/Ambientação/Componentes do modal completo da Seção 6.6-6.7
+do PROMPT MESTRE), duplicar/substituir item.
+
 ## Próximas etapas (não implementadas ainda)
 
-- **Etapa 3**: Editor de orçamento versionado, catálogo de produtos com imagens,
-  importação via Excel, geração de PDF, Pedidos de compra.
 - **Etapa 4**: Agenda global, Relatórios, Configurações (formas de pagamento,
   banco de mensagens, motivos de perda, cupons), Lixeira, Captação de clientes,
   Exportação de dados.

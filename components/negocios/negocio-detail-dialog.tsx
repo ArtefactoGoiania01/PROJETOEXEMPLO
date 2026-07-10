@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -66,9 +67,14 @@ export function NegocioDetailDialog({
     <Dialog open={!!card} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            Negócio #{card.numero} — {card.cliente}
-          </DialogTitle>
+          <div className="flex items-center justify-between gap-2 pr-6">
+            <DialogTitle>
+              Negócio #{card.numero} — {card.cliente}
+            </DialogTitle>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/negocios/${card.id}/orcamento`}>Abrir negócio</Link>
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-3 text-sm">

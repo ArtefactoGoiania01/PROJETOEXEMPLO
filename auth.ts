@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -10,6 +10,10 @@ const credenciaisSchema = z.object({
   email: z.string().email(),
   senha: z.string().min(1),
 });
+
+export class BancoIndisponivelError extends CredentialsSignin {
+  code = "banco_indisponivel";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -26,8 +30,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { email, senha } = parsed.data;
 
-        const prisma = await getPrisma();
-        const user = await prisma.user.findUnique({ where: { email } });
+        let user;
+        try {
+          const prisma = await getPrisma();
+          user = await prisma.user.findUnique({ where: { email } });
+        } catch (error) {
+          // Banco não configurado/inacessível (ex.: deploy Cloudflare sem
+          // Hyperdrive configurado ainda) — falha de forma legível em vez
+          // de deixar o erro de conexão estourar cru para o usuário.
+          console.error("Falha ao conectar ao banco de dados:", error);
+          throw new BancoIndisponivelError();
+        }
+
         if (!user || !user.ativo) return null;
 
         const senhaValida = await bcrypt.compare(senha, user.senhaHash);

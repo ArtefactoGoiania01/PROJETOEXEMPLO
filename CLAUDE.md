@@ -161,47 +161,52 @@ wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
 
 ## Deploy no Cloudflare Workers
 
-Alternativa ao Docker, usando [OpenNext](https://opennext.js.org/cloudflare)
-+ [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) (proxy de
-conexão do Cloudflare para bancos Postgres tradicionais, incluindo o mesmo
-Postgres usado no Docker Compose).
+Alternativa ao Docker, usando [OpenNext](https://opennext.js.org/cloudflare).
+**Por padrão, o Worker sobe sem banco de dados configurado** — a tela de
+login carrega normalmente (não depende de banco para renderizar), mas
+qualquer tentativa de autenticação mostra a mensagem "Banco de dados não
+configurado" em vez de travar com um erro cru. Isso é intencional: o
+binding do Hyperdrive (Postgres) é opcional e só precisa existir quando
+você quiser dados de verdade nesse ambiente.
 
-**Passos únicos de configuração (feitos uma vez, no dashboard/CLI da Cloudflare):**
+`wrangler.jsonc` documenta em comentário os 3 passos para ligar um banco
+real quando você tiver um Postgres acessível pela internet:
 
 ```bash
 npx wrangler login
-
-# Cria o binding Hyperdrive apontando para o Postgres real (precisa ser
-# acessível pela internet — não funciona com um Postgres só em localhost).
 npx wrangler hyperdrive create crm-moveis-db \
   --connection-string="postgresql://usuario:senha@host:5432/crm_moveis"
-# copie o "id" retornado e cole em wrangler.jsonc no lugar de
-# "REPLACE_WITH_HYPERDRIVE_ID"
-
-# AUTH_SECRET é sensível — não vai em wrangler.jsonc, e sim como secret:
-npx wrangler secret put AUTH_SECRET
-# (cole um valor gerado com `openssl rand -base64 32`)
+# copie o "id" retornado, descomente o bloco "hyperdrive" em wrangler.jsonc
+# e cole o id lá
 ```
 
-Ajuste também `NEXTAUTH_URL` em `wrangler.jsonc` (`vars`) para a URL real do
-Worker (ou domínio customizado), e o `name` do Worker se for diferente de
-`exemplo01`.
-
-**Se o deploy rodar via Cloudflare Workers Builds (repositório conectado
-pelo Git, com Build/Deploy command configurados no dashboard):** a
-Cloudflare detecta o projeto OpenNext e substitui `wrangler deploy` por
-`opennextjs-cloudflare deploy` nos bastidores. Esse comando sempre tenta
-emular o binding Hyperdrive como se fosse ambiente local antes de publicar
-— por isso, além do binding real, é preciso configurar em
-**Settings → Variables and secrets** um secret adicional:
+Se o deploy rodar via **Cloudflare Workers Builds** (repositório conectado
+pelo Git — é o caso deste projeto), a Cloudflare detecta o projeto OpenNext
+e substitui `wrangler deploy` por `opennextjs-cloudflare deploy` nos
+bastidores, que sempre tenta emular os bindings como se fosse ambiente
+local antes de publicar. Por isso, ao (re)ativar o Hyperdrive, também é
+preciso configurar em **Settings → Variables and secrets**:
 
 ```
 CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE = <a mesma connection string usada no `wrangler hyperdrive create`>
 ```
 
-Sem isso, o deploy falha com
-`UserError: When developing locally, you should use a local Postgres connection string to emulate Hyperdrive functionality...`
-mesmo em produção.
+Sem isso (com o binding Hyperdrive presente mas sem esse secret), o deploy
+falha com `UserError: When developing locally, you should use a local
+Postgres connection string to emulate Hyperdrive functionality...` mesmo
+em produção. Com o Hyperdrive **ausente** (estado padrão deste repo), esse
+problema não aparece.
+
+`AUTH_SECRET` é sensível e não fica em `wrangler.jsonc` — configure como
+secret quando for usar autenticação de verdade:
+
+```bash
+npx wrangler secret put AUTH_SECRET
+# (cole um valor gerado com `openssl rand -base64 32`)
+```
+
+`NEXTAUTH_URL` não precisa ser configurado — `auth.config.ts` usa
+`trustHost: true`, então a URL é inferida do header `Host` da requisição.
 
 **Deploy:**
 

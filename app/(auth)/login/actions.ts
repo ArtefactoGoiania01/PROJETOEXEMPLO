@@ -3,7 +3,7 @@
 import { AuthError } from "next-auth";
 import { z } from "zod";
 
-import { signIn } from "@/auth";
+import { signIn, BancoIndisponivelError } from "@/auth";
 
 const loginSchema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -35,6 +35,12 @@ export async function loginAction(
     });
     return {};
   } catch (error) {
+    if (error instanceof BancoIndisponivelError) {
+      return {
+        error:
+          "Banco de dados não configurado neste ambiente. Configure a conexão (ver README) para habilitar o login.",
+      };
+    }
     if (error instanceof AuthError) {
       return { error: "E-mail ou senha inválidos." };
     }

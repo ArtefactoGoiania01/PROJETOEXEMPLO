@@ -55,19 +55,14 @@ para `/negocios` (ou para `/login`, se não autenticado).
 ### Opção 3 — Cloudflare Workers
 
 ```bash
-npx wrangler login
-npx wrangler hyperdrive create crm-moveis-db --connection-string="postgresql://..."
-# cole o id retornado em wrangler.jsonc (campo "id" do binding HYPERDRIVE)
-npx wrangler secret put AUTH_SECRET
-
 npm run cf:deploy
 ```
 
-Se o deploy for feito via Cloudflare Workers Builds (repositório conectado
-pelo Git), configure também o secret `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`
-(mesma connection string do `hyperdrive create`) — sem ele o deploy falha
-mesmo em produção. Detalhes completos (bindings, limitações do runtime) em
-`CLAUDE.md` → "Deploy no Cloudflare Workers".
+Por padrão sobe **sem banco de dados** — a tela de login carrega
+normalmente, mas autenticar mostra "Banco de dados não configurado" em vez
+de travar. Para ligar um Postgres real depois, veja `CLAUDE.md` → "Deploy
+no Cloudflare Workers" (envolve `wrangler hyperdrive create` + descomentar
+um bloco em `wrangler.jsonc`).
 
 ### Login (usuários de seed, senha `123456`)
 

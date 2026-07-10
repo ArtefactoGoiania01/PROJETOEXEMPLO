@@ -3,6 +3,13 @@
 Guia de convenções e mapa do projeto para o CRM de Vendas & Orçamentos (Móveis).
 Atualize este arquivo a cada etapa concluída do PROMPT MESTRE.
 
+> **Desvio deliberado do PROMPT MESTRE:** a Etapa 1 original previa Auth.js
+> com login e RBAC. Isso foi removido a pedido explícito do usuário — este
+> deploy é um exemplo sem banco de dados hospedado, e login sem um banco
+> real acessível não tinha como funcionar. O app inteiro é público (sem
+> tela de login, sem sessão). Se/quando um banco de produção for conectado,
+> reavaliar se autenticação deve voltar.
+
 ## Stack
 
 - Next.js 16 (App Router) + TypeScript strict
@@ -13,7 +20,6 @@ Atualize este arquivo a cada etapa concluída do PROMPT MESTRE.
 - PostgreSQL + Prisma 6 (`prisma-client-js`) via **driver adapter** (`@prisma/adapter-pg`),
   para o mesmo client funcionar tanto em Node.js (engine local) quanto em
   Cloudflare Workers (via Hyperdrive, sem engine binário)
-- Auth.js (NextAuth v5 beta) com Credentials Provider + RBAC por papel
 - Zod em todas as fronteiras (Server Actions)
 - Vitest (unit) + Playwright (E2E, a partir da Etapa 2)
 - Deploy: Docker Compose (app + Postgres) **ou** Cloudflare Workers via
@@ -52,21 +58,19 @@ npm run cf:deploy     # build + `wrangler deploy` (Cloudflare Workers)
 5. `npm run db:seed` (popula usuários, funil, clientes e negócios de exemplo)
 6. `npm run dev`
 
-### Usuários de seed (senha `123456`)
-
-- `admin@artefactogoiania.com` — Admin
-- `eunice.martins@artefactogoiania.com` — Vendedor (EUNICE MARTINS)
-- `natanael.santos@artefactogoiania.com` — Assistente (NATANAEL SANTOS)
+Não há login — acessar `http://localhost:3000` já entra direto no app.
+O seed ainda popula `User` (Admin/Vendedor/Assistente) porque `Negocio`,
+`Atividade` etc. referenciam um responsável — é dado de domínio, não
+credencial de acesso.
 
 ## Mapa do projeto
 
 ```
 /app
-  /(auth)/login              → tela de login (Server Action em actions.ts)
-  /(app)/layout.tsx           → shell global (sidebar + topbar) + guarda de
-                                  sessão (redireciona para /login se não
-                                  autenticado — ver "Convenções" sobre por que
-                                  isso não é feito em middleware/proxy.ts)
+  /(app)/layout.tsx           → shell global: sidebar de ícones + topbar
+                                  (`export const dynamic = "force-dynamic"`
+                                  para as páginas de Contatos sempre
+                                  buscarem dados frescos do banco)
   /(app)/negocios             → funil de vendas (placeholder até a Etapa 2)
     /orcamentos, /lista, /sem-acompanhamento, /motivos-perda, /vendedores,
     /margem-lucro, /cupons, /pedidos-compra, /lixeira, /banco-mensagens,
@@ -76,7 +80,6 @@ npm run cf:deploy     # build + `wrangler deploy` (Cloudflare Workers)
     /fabricantes, /categorias, /usuarios
   /(app)/arquivos, /agenda, /relatorios, /captacao, /produtos, /exportacao
                                → placeholders (Etapas 2-4)
-  /api/auth/[...nextauth]     → rota do Auth.js
 
 /components
   /ui                          → primitivos estilo shadcn/ui (Radix + CVA)
@@ -85,11 +88,9 @@ npm run cf:deploy     # build + `wrangler deploy` (Cloudflare Workers)
                                   entre todas as entidades de cadastro simples
 
 /lib
-  auth.ts (raiz), auth.config.ts (raiz) → configuração do Auth.js
   db.ts                         → getPrisma(): resolve o client certo por
                                    runtime (Node engine local vs. Cloudflare
                                    Hyperdrive via driver adapter)
-  rbac.ts                       → requireSession / requirePapel
   labels/pt-BR.ts               → labels e formatação (moeda, data) centralizados
   validators/contatos.ts        → schemas Zod dos cadastros
 
@@ -116,18 +117,9 @@ wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
 - Soft delete (`deletedAt`) é usado em `Cliente`, `Negocio`, `Orcamento` e
   `Produto`. `User` usa `ativo=false` como desativação (é referenciado por
   muitas FKs, não pode ser removido).
-- RBAC: `lib/rbac.ts` expõe `requireSession()` e `requirePapel(...papeis)`.
-  Gestão de usuários (`/contatos/usuarios`) exige papel `ADMIN`.
 - Next.js 16 não usa mais `next/font/google` sem risco de dependência de rede
   neste ambiente — o layout usa a pilha de fontes padrão do sistema
   (`font-sans` do Tailwind).
-- **Não existe `middleware.ts`/`proxy.ts`.** O Next.js 16 trocou a convenção
-  `middleware.ts` por `proxy.ts`, mas essa nova convenção só roda em runtime
-  Node.js (não aceita mais `runtime: "edge"`), o que é incompatível com o
-  adapter `@opennextjs/cloudflare` (exige middleware em Edge). Por isso a
-  proteção de rotas de `(app)` foi movida para `app/(app)/layout.tsx`
-  (Server Component, roda em qualquer runtime suportado por ambos os
-  targets de deploy).
 - `lib/db.ts` exporta `getPrisma()` (assíncrono) em vez de um `prisma`
   singleton — toda página/Server Action precisa de `const prisma = await
   getPrisma();`. Isso existe porque em Cloudflare Workers o binding do
@@ -136,6 +128,8 @@ wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
 
 ## Decisões técnicas registradas
 
+- **Sem autenticação**: ver aviso no topo do arquivo. `app/(app)/layout.tsx`
+  não faz nenhum controle de acesso; todas as rotas são públicas.
 - **Prisma 6.19 (não 7)**: a v7 mudou o generator (`prisma-client` com output
   custom + `prisma.config.ts`) e ainda está em adoção recente; fixamos a v6
   estável para reduzir risco de instabilidade na fundação do projeto.
@@ -162,12 +156,12 @@ wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
 ## Deploy no Cloudflare Workers
 
 Alternativa ao Docker, usando [OpenNext](https://opennext.js.org/cloudflare).
-**Por padrão, o Worker sobe sem banco de dados configurado** — a tela de
-login carrega normalmente (não depende de banco para renderizar), mas
-qualquer tentativa de autenticação mostra a mensagem "Banco de dados não
-configurado" em vez de travar com um erro cru. Isso é intencional: o
-binding do Hyperdrive (Postgres) é opcional e só precisa existir quando
-você quiser dados de verdade nesse ambiente.
+**Por padrão, o Worker sobe sem banco de dados configurado** — o app carrega
+normalmente (não depende de banco para renderizar o shell), mas qualquer
+tela que busque dados (Contatos etc.) falha até um Postgres real ser
+conectado. Isso é intencional: o binding do Hyperdrive (Postgres) é
+opcional e só precisa existir quando você quiser dados de verdade nesse
+ambiente.
 
 `wrangler.jsonc` documenta em comentário os 3 passos para ligar um banco
 real quando você tiver um Postgres acessível pela internet:
@@ -196,17 +190,6 @@ falha com `UserError: When developing locally, you should use a local
 Postgres connection string to emulate Hyperdrive functionality...` mesmo
 em produção. Com o Hyperdrive **ausente** (estado padrão deste repo), esse
 problema não aparece.
-
-`AUTH_SECRET` é sensível e não fica em `wrangler.jsonc` — configure como
-secret quando for usar autenticação de verdade:
-
-```bash
-npx wrangler secret put AUTH_SECRET
-# (cole um valor gerado com `openssl rand -base64 32`)
-```
-
-`NEXTAUTH_URL` não precisa ser configurado — `auth.config.ts` usa
-`trustHost: true`, então a URL é inferida do header `Host` da requisição.
 
 **Deploy:**
 

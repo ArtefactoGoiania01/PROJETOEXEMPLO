@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 
 import { getPrisma } from "@/lib/db";
-import { requireSession } from "@/lib/rbac";
 import { clienteSchema } from "@/lib/validators/contatos";
 
 function parseFormData(formData: FormData) {
@@ -33,7 +32,6 @@ function montarEndereco(data: {
 }
 
 export async function criarCliente(formData: FormData) {
-  await requireSession();
   const parsed = parseFormData(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -48,7 +46,6 @@ export async function criarCliente(formData: FormData) {
 }
 
 export async function atualizarCliente(id: string, formData: FormData) {
-  await requireSession();
   const parsed = parseFormData(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -64,7 +61,6 @@ export async function atualizarCliente(id: string, formData: FormData) {
 }
 
 export async function excluirCliente(id: string) {
-  await requireSession();
   const prisma = await getPrisma();
   await prisma.cliente.update({ where: { id }, data: { deletedAt: new Date() } });
   revalidatePath("/contatos/clientes");

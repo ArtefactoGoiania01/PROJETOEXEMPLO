@@ -24,8 +24,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://crm:crm@db:5432/crm_moveis?schema=public
-      AUTH_SECRET: dev-secret-change-me-1234567890abcdef
-      NEXTAUTH_URL: http://localhost:3000
       UPLOADS_DIR: /app/uploads
     ports:
       - "3000:3000"

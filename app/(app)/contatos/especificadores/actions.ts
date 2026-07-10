@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 
 import { getPrisma } from "@/lib/db";
-import { requireSession } from "@/lib/rbac";
 import { especificadorSchema } from "@/lib/validators/contatos";
 
 function parseFormData(formData: FormData) {
@@ -16,7 +15,6 @@ function parseFormData(formData: FormData) {
 }
 
 export async function criarEspecificador(formData: FormData) {
-  await requireSession();
   const parsed = parseFormData(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -31,7 +29,6 @@ export async function criarEspecificador(formData: FormData) {
 }
 
 export async function atualizarEspecificador(id: string, formData: FormData) {
-  await requireSession();
   const parsed = parseFormData(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -47,7 +44,6 @@ export async function atualizarEspecificador(id: string, formData: FormData) {
 }
 
 export async function excluirEspecificador(id: string) {
-  await requireSession();
   const prisma = await getPrisma();
   await prisma.especificador.delete({ where: { id } });
   revalidatePath("/contatos/especificadores");

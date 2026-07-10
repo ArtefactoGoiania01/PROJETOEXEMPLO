@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 
 import { getPrisma } from "@/lib/db";
-import { requireSession } from "@/lib/rbac";
 import { fabricanteSchema } from "@/lib/validators/contatos";
 
 function parseFormData(formData: FormData) {
@@ -13,7 +12,6 @@ function parseFormData(formData: FormData) {
 }
 
 export async function criarFabricante(formData: FormData) {
-  await requireSession();
   const parsed = parseFormData(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -25,7 +23,6 @@ export async function criarFabricante(formData: FormData) {
 }
 
 export async function atualizarFabricante(id: string, formData: FormData) {
-  await requireSession();
   const parsed = parseFormData(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -37,7 +34,6 @@ export async function atualizarFabricante(id: string, formData: FormData) {
 }
 
 export async function excluirFabricante(id: string) {
-  await requireSession();
   const prisma = await getPrisma();
   await prisma.fabricante.delete({ where: { id } });
   revalidatePath("/contatos/fabricantes");

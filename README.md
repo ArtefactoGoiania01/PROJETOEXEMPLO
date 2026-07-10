@@ -6,16 +6,19 @@ catálogo de produtos. Interface e domínio em Português (Brasil).
 
 > Este repositório está sendo construído em 4 etapas (ver `CLAUDE.md`).
 > **Etapa 1 — Fundação e Cadastros Base** está implementada nesta versão:
-> autenticação, schema completo do banco, layout global e CRUD de contatos.
-> As demais telas (funil, negócio, orçamento, catálogo, agenda, relatórios,
+> schema completo do banco, layout global e CRUD de contatos. As demais
+> telas (funil, negócio, orçamento, catálogo, agenda, relatórios,
 > configurações) aparecem como "Em construção" até suas respectivas etapas.
+>
+> **Sem autenticação:** este é um deploy de exemplo sem banco de dados
+> hospedado, então o login foi removido — o app inteiro é público.
 
 ## Stack
 
 Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · componentes estilo
 shadcn/ui · PostgreSQL · Prisma 6 (driver adapter `@prisma/adapter-pg`) ·
-Auth.js (NextAuth v5) · Zod · Vitest · Playwright · Docker Compose ou
-Cloudflare Workers (`@opennextjs/cloudflare` + Hyperdrive).
+Zod · Vitest · Playwright · Docker Compose ou Cloudflare Workers
+(`@opennextjs/cloudflare` + Hyperdrive).
 
 ## Como rodar
 
@@ -50,7 +53,7 @@ npm run dev
 ```
 
 Acesse [http://localhost:3000](http://localhost:3000) — a rota raiz redireciona
-para `/negocios` (ou para `/login`, se não autenticado).
+para `/negocios` direto, sem login.
 
 ### Opção 3 — Cloudflare Workers
 
@@ -58,19 +61,11 @@ para `/negocios` (ou para `/login`, se não autenticado).
 npm run cf:deploy
 ```
 
-Por padrão sobe **sem banco de dados** — a tela de login carrega
-normalmente, mas autenticar mostra "Banco de dados não configurado" em vez
-de travar. Para ligar um Postgres real depois, veja `CLAUDE.md` → "Deploy
-no Cloudflare Workers" (envolve `wrangler hyperdrive create` + descomentar
-um bloco em `wrangler.jsonc`).
-
-### Login (usuários de seed, senha `123456`)
-
-| E-mail | Papel |
-| --- | --- |
-| `admin@artefactogoiania.com` | Admin |
-| `eunice.martins@artefactogoiania.com` | Vendedor (EUNICE MARTINS) |
-| `natanael.santos@artefactogoiania.com` | Assistente (NATANAEL SANTOS) |
+Por padrão sobe **sem banco de dados** — o app carrega normalmente, mas
+telas que dependem de dados (Contatos etc.) falham até um Postgres real
+ser conectado. Para ligar um Postgres real depois, veja `CLAUDE.md` →
+"Deploy no Cloudflare Workers" (envolve `wrangler hyperdrive create` +
+descomentar um bloco em `wrangler.jsonc`).
 
 ## Scripts
 

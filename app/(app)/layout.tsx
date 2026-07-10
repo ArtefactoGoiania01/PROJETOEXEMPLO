@@ -1,19 +1,16 @@
-import { redirect } from "next/navigation";
-
-import { auth } from "@/auth";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 
-export default async function AppLayout({
+// Sem isso, o Next.js pré-renderiza estaticamente as páginas que buscam
+// dados via Prisma (Contatos etc.) — elas mostrariam dados congelados do
+// momento do build em vez de consultar o banco a cada acesso.
+export const dynamic = "force-dynamic";
+
+export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
-  }
-
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <AppSidebar />

@@ -63,8 +63,11 @@ npx wrangler secret put AUTH_SECRET
 npm run cf:deploy
 ```
 
-Detalhes completos (bindings, limitações do runtime) em `CLAUDE.md` →
-"Deploy no Cloudflare Workers".
+Se o deploy for feito via Cloudflare Workers Builds (repositório conectado
+pelo Git), configure também o secret `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`
+(mesma connection string do `hyperdrive create`) — sem ele o deploy falha
+mesmo em produção. Detalhes completos (bindings, limitações do runtime) em
+`CLAUDE.md` → "Deploy no Cloudflare Workers".
 
 ### Login (usuários de seed, senha `123456`)
 

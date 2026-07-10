@@ -187,6 +187,22 @@ Ajuste também `NEXTAUTH_URL` em `wrangler.jsonc` (`vars`) para a URL real do
 Worker (ou domínio customizado), e o `name` do Worker se for diferente de
 `exemplo01`.
 
+**Se o deploy rodar via Cloudflare Workers Builds (repositório conectado
+pelo Git, com Build/Deploy command configurados no dashboard):** a
+Cloudflare detecta o projeto OpenNext e substitui `wrangler deploy` por
+`opennextjs-cloudflare deploy` nos bastidores. Esse comando sempre tenta
+emular o binding Hyperdrive como se fosse ambiente local antes de publicar
+— por isso, além do binding real, é preciso configurar em
+**Settings → Variables and secrets** um secret adicional:
+
+```
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE = <a mesma connection string usada no `wrangler hyperdrive create`>
+```
+
+Sem isso, o deploy falha com
+`UserError: When developing locally, you should use a local Postgres connection string to emulate Hyperdrive functionality...`
+mesmo em produção.
+
 **Deploy:**
 
 ```bash

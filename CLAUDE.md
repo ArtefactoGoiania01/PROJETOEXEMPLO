@@ -71,21 +71,29 @@ credencial de acesso.
                                   (`export const dynamic = "force-dynamic"`
                                   para as páginas de Contatos sempre
                                   buscarem dados frescos do banco)
-  /(app)/negocios             → funil de vendas (placeholder até a Etapa 2)
-    /orcamentos, /lista, /sem-acompanhamento, /motivos-perda, /vendedores,
-    /margem-lucro, /cupons, /pedidos-compra, /lixeira, /banco-mensagens,
-    /formas-pagamento         → submenu de Negócios (placeholders — Etapas 2-4)
+  /(app)/negocios              → Funil (Kanban) — Etapa 2, versão simplificada
+    /lista                     → tabela de todos os negócios
+    /sem-acompanhamento        → negócios abertos sem nenhuma Atividade
+    /orcamentos, /motivos-perda, /vendedores, /margem-lucro, /cupons,
+    /pedidos-compra, /lixeira, /banco-mensagens, /formas-pagamento
+                               → submenu de Negócios (placeholders — Etapas 3-4)
   /(app)/contatos              → CRUD funcionais (Etapa 1)
     /clientes, /especificadores, /escritorios, /construtoras,
     /fabricantes, /categorias, /usuarios
   /(app)/arquivos, /agenda, /relatorios, /captacao, /produtos, /exportacao
-                               → placeholders (Etapas 2-4)
+                               → placeholders (Etapas 3-4)
 
 /components
   /ui                          → primitivos estilo shadcn/ui (Radix + CVA)
   /layout                      → sidebar, topbar, submenus, nav-config
   /contatos/entity-manager.tsx → tabela + dialog de CRUD genérico e reutilizável
                                   entre todas as entidades de cadastro simples
+  /negocios/kanban-board.tsx   → board com @dnd-kit (drag-and-drop entre
+                                  etapas); kanban-board-client.tsx carrega
+                                  sem SSR (dnd-kit gera ids que divergem
+                                  entre servidor/cliente e quebram hidratação)
+  /negocios/negocio-detail-dialog.tsx → ficha simplificada do negócio
+                                  (dados principais + Vendido/Cancelado)
 
 /lib
   db.ts                         → getPrisma(): resolve o client certo por
@@ -212,10 +220,26 @@ deploy, mas ainda não foram adaptadas):
   credenciais); validado localmente via `npm run cf:build` +
   `wrangler deploy --dry-run`, que confirmam bundle e bindings corretos.
 
+## Etapa 2 — versão simplificada (a pedido do usuário)
+
+A pedido explícito do usuário, a Etapa 2 foi implementada de forma
+enxuta/visual — este é um software de teste, não precisa da complexidade
+completa do PROMPT MESTRE. Implementado:
+
+- Kanban do funil (`/negocios`) com drag-and-drop entre etapas (@dnd-kit),
+  totais por coluna, cards com dados do negócio.
+- Clique no card abre uma ficha simplificada (dados principais + botões
+  Vendido / Cancelado com seleção de motivo de perda).
+- `/negocios/lista` e `/negocios/sem-acompanhamento`.
+
+**Não implementado nesta etapa** (fora de escopo por decisão de produto,
+não por limitação técnica): atividades/notas/anexos, timeline com filtros,
+mini-calendário, abas "Venda Realizada"/"Venda Cancelada", busca/filtro de
+cartões (a busca no topo é só visual), badge de atividade real (todo card
+mostra "Sem atividades" fixo, já que não há tela de criar atividade ainda).
+
 ## Próximas etapas (não implementadas ainda)
 
-- **Etapa 2**: Kanban do funil de vendas, ficha do negócio, atividades/notas/
-  anexos/timeline, ações Vendido/Cancelado, Negócios em lista/Sem acompanhamento.
 - **Etapa 3**: Editor de orçamento versionado, catálogo de produtos com imagens,
   importação via Excel, geração de PDF, Pedidos de compra.
 - **Etapa 4**: Agenda global, Relatórios, Configurações (formas de pagamento,

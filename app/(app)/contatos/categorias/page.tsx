@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { EntityManager, type EntityField, type EntityColumn } from "@/components/contatos/entity-manager";
 import { criarCategoria, atualizarCategoria, excluirCategoria } from "./actions";
 
@@ -7,6 +7,7 @@ const fields: EntityField[] = [{ name: "nome", label: "Nome", type: "text" }];
 const columns: EntityColumn[] = [{ key: "nome", label: "Nome" }];
 
 export default async function CategoriasPage() {
+  const prisma = await getPrisma();
   const categorias = await prisma.categoriaProduto.findMany({
     orderBy: { nome: "asc" },
     select: { id: true, nome: true },

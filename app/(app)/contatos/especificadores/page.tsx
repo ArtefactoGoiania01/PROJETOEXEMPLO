@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { EntityManager, type EntityField, type EntityColumn } from "@/components/contatos/entity-manager";
 import {
   criarEspecificador,
@@ -7,6 +7,7 @@ import {
 } from "./actions";
 
 export default async function EspecificadoresPage() {
+  const prisma = await getPrisma();
   const [especificadores, escritorios] = await Promise.all([
     prisma.especificador.findMany({
       orderBy: { nome: "asc" },

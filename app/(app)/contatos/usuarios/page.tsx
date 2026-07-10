@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { EntityManager, type EntityField, type EntityColumn } from "@/components/contatos/entity-manager";
 import { papelUsuarioLabels } from "@/lib/labels/pt-BR";
@@ -44,6 +44,7 @@ const columns: EntityColumn[] = [
 ];
 
 export default async function UsuariosPage() {
+  const prisma = await getPrisma();
   const usuarios = await prisma.user.findMany({
     orderBy: { nome: "asc" },
     select: { id: true, nome: true, email: true, papel: true, ativo: true },

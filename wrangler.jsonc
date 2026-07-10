@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "exemplo01",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Criado com `wrangler hyperdrive create <nome> --connection-string="postgres://..."`
+  // apontando para o Postgres self-hosted (ou o mesmo usado no Docker Compose).
+  // Substitua "REPLACE_WITH_HYPERDRIVE_ID" pelo id retornado pelo comando acima.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "REPLACE_WITH_HYPERDRIVE_ID"
+    }
+  ],
+  "vars": {
+    "NEXTAUTH_URL": "https://exemplo01.<seu-subdominio>.workers.dev"
+  }
+}

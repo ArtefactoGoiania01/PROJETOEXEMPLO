@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { requireSession } from "@/lib/rbac";
 import { escritorioSchema } from "@/lib/validators/contatos";
 
@@ -21,6 +21,7 @@ export async function criarEscritorio(formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const prisma = await getPrisma();
   await prisma.escritorio.create({ data: parsed.data });
   revalidatePath("/contatos/escritorios");
   return {};
@@ -32,6 +33,7 @@ export async function atualizarEscritorio(id: string, formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const prisma = await getPrisma();
   await prisma.escritorio.update({ where: { id }, data: parsed.data });
   revalidatePath("/contatos/escritorios");
   return {};
@@ -39,6 +41,7 @@ export async function atualizarEscritorio(id: string, formData: FormData) {
 
 export async function excluirEscritorio(id: string) {
   await requireSession();
+  const prisma = await getPrisma();
   await prisma.escritorio.delete({ where: { id } });
   revalidatePath("/contatos/escritorios");
   return {};

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { requirePapel } from "@/lib/rbac";
 import { usuarioSchema } from "@/lib/validators/contatos";
 
@@ -27,6 +27,7 @@ export async function criarUsuario(formData: FormData) {
     return { error: "Informe uma senha para o novo usuário." };
   }
   const senhaHash = await bcrypt.hash(parsed.data.senha, 10);
+  const prisma = await getPrisma();
   await prisma.user.create({
     data: {
       nome: parsed.data.nome,
@@ -47,6 +48,7 @@ export async function atualizarUsuario(id: string, formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
   const { senha, ...rest } = parsed.data;
+  const prisma = await getPrisma();
   await prisma.user.update({
     where: { id },
     data: {
@@ -60,6 +62,7 @@ export async function atualizarUsuario(id: string, formData: FormData) {
 
 export async function excluirUsuario(id: string) {
   await requirePapel("ADMIN");
+  const prisma = await getPrisma();
   await prisma.user.update({ where: { id }, data: { ativo: false } });
   revalidatePath("/contatos/usuarios");
   return {};

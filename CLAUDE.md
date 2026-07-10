@@ -10,11 +10,14 @@ Atualize este arquivo a cada etapa concluída do PROMPT MESTRE.
   (o CLI oficial `shadcn` não pode ser usado neste ambiente — `ui.shadcn.com` é
   bloqueado pela política de rede — por isso os componentes foram portados à mão
   a partir dos padrões do shadcn/ui: Radix + CVA + Tailwind)
-- PostgreSQL + Prisma 6 (`prisma-client-js`)
+- PostgreSQL + Prisma 6 (`prisma-client-js`) via **driver adapter** (`@prisma/adapter-pg`),
+  para o mesmo client funcionar tanto em Node.js (engine local) quanto em
+  Cloudflare Workers (via Hyperdrive, sem engine binário)
 - Auth.js (NextAuth v5 beta) com Credentials Provider + RBAC por papel
 - Zod em todas as fronteiras (Server Actions)
 - Vitest (unit) + Playwright (E2E, a partir da Etapa 2)
-- Docker Compose (app + Postgres)
+- Deploy: Docker Compose (app + Postgres) **ou** Cloudflare Workers via
+  `@opennextjs/cloudflare` (ver seção "Deploy no Cloudflare Workers" abaixo)
 
 ## Comandos
 
@@ -34,6 +37,10 @@ npm run db:studio     # Prisma Studio
 npm run db:generate   # prisma generate
 
 docker compose up --build   # sobe Postgres + app
+
+npm run cf:build      # build do Worker (@opennextjs/cloudflare)
+npm run cf:preview    # build + `wrangler dev` local simulando o Worker
+npm run cf:deploy     # build + `wrangler deploy` (Cloudflare Workers)
 ```
 
 ### Setup local sem Docker
@@ -56,7 +63,10 @@ docker compose up --build   # sobe Postgres + app
 ```
 /app
   /(auth)/login              → tela de login (Server Action em actions.ts)
-  /(app)/layout.tsx           → shell global: sidebar de ícones + topbar
+  /(app)/layout.tsx           → shell global (sidebar + topbar) + guarda de
+                                  sessão (redireciona para /login se não
+                                  autenticado — ver "Convenções" sobre por que
+                                  isso não é feito em middleware/proxy.ts)
   /(app)/negocios             → funil de vendas (placeholder até a Etapa 2)
     /orcamentos, /lista, /sem-acompanhamento, /motivos-perda, /vendedores,
     /margem-lucro, /cupons, /pedidos-compra, /lixeira, /banco-mensagens,
@@ -76,7 +86,9 @@ docker compose up --build   # sobe Postgres + app
 
 /lib
   auth.ts (raiz), auth.config.ts (raiz) → configuração do Auth.js
-  db.ts                         → client singleton do Prisma
+  db.ts                         → getPrisma(): resolve o client certo por
+                                   runtime (Node engine local vs. Cloudflare
+                                   Hyperdrive via driver adapter)
   rbac.ts                       → requireSession / requirePapel
   labels/pt-BR.ts               → labels e formatação (moeda, data) centralizados
   validators/contatos.ts        → schemas Zod dos cadastros
@@ -89,8 +101,7 @@ docker compose up --build   # sobe Postgres + app
                                    clientes/especificadores/escritórios e negócios
 
 /tests                          → Vitest (unit)
-proxy.ts                        → middleware de autenticação (Next.js 16 renomeou
-                                   a convenção "middleware" para "proxy")
+wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
 ```
 
 ## Convenções
@@ -110,6 +121,18 @@ proxy.ts                        → middleware de autenticação (Next.js 16 ren
 - Next.js 16 não usa mais `next/font/google` sem risco de dependência de rede
   neste ambiente — o layout usa a pilha de fontes padrão do sistema
   (`font-sans` do Tailwind).
+- **Não existe `middleware.ts`/`proxy.ts`.** O Next.js 16 trocou a convenção
+  `middleware.ts` por `proxy.ts`, mas essa nova convenção só roda em runtime
+  Node.js (não aceita mais `runtime: "edge"`), o que é incompatível com o
+  adapter `@opennextjs/cloudflare` (exige middleware em Edge). Por isso a
+  proteção de rotas de `(app)` foi movida para `app/(app)/layout.tsx`
+  (Server Component, roda em qualquer runtime suportado por ambos os
+  targets de deploy).
+- `lib/db.ts` exporta `getPrisma()` (assíncrono) em vez de um `prisma`
+  singleton — toda página/Server Action precisa de `const prisma = await
+  getPrisma();`. Isso existe porque em Cloudflare Workers o binding do
+  Hyperdrive só existe no contexto da requisição (não há `process.env`
+  nem client reaproveitável entre requisições como em Node).
 
 ## Decisões técnicas registradas
 
@@ -125,6 +148,65 @@ proxy.ts                        → middleware de autenticação (Next.js 16 ren
 - **Dockerfile mantém `node_modules` completo** (em vez de `output: "standalone"`)
   para que `prisma migrate deploy` rode no `CMD` do container sem precisar de
   um estágio/imagem adicional só para o CLI do Prisma.
+- **`@prisma/adapter-pg` em vez do engine padrão do Prisma**: necessário para
+  o mesmo `PrismaClient` funcionar tanto em Node.js (Docker) quanto em
+  Cloudflare Workers, que não tem filesystem para o engine binário do Prisma.
+  Não é preview feature no Prisma 6.19 (já estável).
+- **`pg-cloudflare` como dependência direta**: o `open-next.config.ts` força
+  reinstalação real desse pacote dentro do bundle da função
+  (`default.install.packages`), porque o tracing padrão do Next só copia a
+  variante vazia (`dist/empty.js`) do pacote — a variante real para o
+  runtime `workerd` (`dist/index.js`) fica atrás de uma export condition que
+  o tracer não resolve sozinho.
+
+## Deploy no Cloudflare Workers
+
+Alternativa ao Docker, usando [OpenNext](https://opennext.js.org/cloudflare)
++ [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) (proxy de
+conexão do Cloudflare para bancos Postgres tradicionais, incluindo o mesmo
+Postgres usado no Docker Compose).
+
+**Passos únicos de configuração (feitos uma vez, no dashboard/CLI da Cloudflare):**
+
+```bash
+npx wrangler login
+
+# Cria o binding Hyperdrive apontando para o Postgres real (precisa ser
+# acessível pela internet — não funciona com um Postgres só em localhost).
+npx wrangler hyperdrive create crm-moveis-db \
+  --connection-string="postgresql://usuario:senha@host:5432/crm_moveis"
+# copie o "id" retornado e cole em wrangler.jsonc no lugar de
+# "REPLACE_WITH_HYPERDRIVE_ID"
+
+# AUTH_SECRET é sensível — não vai em wrangler.jsonc, e sim como secret:
+npx wrangler secret put AUTH_SECRET
+# (cole um valor gerado com `openssl rand -base64 32`)
+```
+
+Ajuste também `NEXTAUTH_URL` em `wrangler.jsonc` (`vars`) para a URL real do
+Worker (ou domínio customizado), e o `name` do Worker se for diferente de
+`exemplo01`.
+
+**Deploy:**
+
+```bash
+npm run cf:deploy
+```
+
+Isso builda o Next.js normalmente, empacota com `@opennextjs/cloudflare` e
+publica via `wrangler deploy`. Rode as migrations contra o mesmo Postgres
+antes do primeiro deploy (`DATABASE_URL=... npx prisma migrate deploy`, a
+partir de qualquer máquina com acesso à internet ao banco — o runtime do
+Worker em si não roda migrations).
+
+**Limitações conhecidas desta etapa no runtime Cloudflare** (não bloqueiam o
+deploy, mas ainda não foram adaptadas):
+- Upload de arquivos (`/uploads`) usa disco local — não existe em Workers.
+  Isso só vira relevante a partir da Etapa 3 (imagens de produto);
+  quando chegar lá, vai precisar de um bucket R2.
+- Não testado contra uma instância real da Cloudflare nesta sessão (sem
+  credenciais); validado localmente via `npm run cf:build` +
+  `wrangler deploy --dry-run`, que confirmam bundle e bindings corretos.
 
 ## Próximas etapas (não implementadas ainda)
 

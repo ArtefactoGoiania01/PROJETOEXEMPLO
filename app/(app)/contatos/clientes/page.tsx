@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { EntityManager, type EntityField, type EntityColumn } from "@/components/contatos/entity-manager";
 import { criarCliente, atualizarCliente, excluirCliente } from "./actions";
 
@@ -30,6 +30,7 @@ const columns: EntityColumn[] = [
 ];
 
 export default async function ClientesPage() {
+  const prisma = await getPrisma();
   const clientes = await prisma.cliente.findMany({
     where: { deletedAt: null },
     orderBy: { nome: "asc" },

@@ -13,8 +13,9 @@ catálogo de produtos. Interface e domínio em Português (Brasil).
 ## Stack
 
 Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · componentes estilo
-shadcn/ui · PostgreSQL · Prisma 6 · Auth.js (NextAuth v5) · Zod · Vitest ·
-Playwright · Docker Compose.
+shadcn/ui · PostgreSQL · Prisma 6 (driver adapter `@prisma/adapter-pg`) ·
+Auth.js (NextAuth v5) · Zod · Vitest · Playwright · Docker Compose ou
+Cloudflare Workers (`@opennextjs/cloudflare` + Hyperdrive).
 
 ## Como rodar
 
@@ -51,6 +52,20 @@ npm run dev
 Acesse [http://localhost:3000](http://localhost:3000) — a rota raiz redireciona
 para `/negocios` (ou para `/login`, se não autenticado).
 
+### Opção 3 — Cloudflare Workers
+
+```bash
+npx wrangler login
+npx wrangler hyperdrive create crm-moveis-db --connection-string="postgresql://..."
+# cole o id retornado em wrangler.jsonc (campo "id" do binding HYPERDRIVE)
+npx wrangler secret put AUTH_SECRET
+
+npm run cf:deploy
+```
+
+Detalhes completos (bindings, limitações do runtime) em `CLAUDE.md` →
+"Deploy no Cloudflare Workers".
+
 ### Login (usuários de seed, senha `123456`)
 
 | E-mail | Papel |
@@ -74,6 +89,10 @@ npm run db:migrate    # prisma migrate dev
 npm run db:deploy     # prisma migrate deploy
 npm run db:seed       # prisma/seed.ts
 npm run db:studio     # Prisma Studio
+
+npm run cf:build      # build do Worker (Cloudflare)
+npm run cf:preview    # build + wrangler dev local
+npm run cf:deploy     # build + wrangler deploy
 ```
 
 ## Estrutura

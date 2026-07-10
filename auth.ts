@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { authConfig } from "@/auth.config";
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 
 const credenciaisSchema = z.object({
   email: z.string().email(),
@@ -26,6 +26,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const { email, senha } = parsed.data;
 
+        const prisma = await getPrisma();
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user || !user.ativo) return null;
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { requireSession } from "@/lib/rbac";
 import { construtoraSchema } from "@/lib/validators/contatos";
 
@@ -18,6 +18,7 @@ export async function criarConstrutora(formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const prisma = await getPrisma();
   await prisma.construtora.create({ data: parsed.data });
   revalidatePath("/contatos/construtoras");
   return {};
@@ -29,6 +30,7 @@ export async function atualizarConstrutora(id: string, formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const prisma = await getPrisma();
   await prisma.construtora.update({ where: { id }, data: parsed.data });
   revalidatePath("/contatos/construtoras");
   return {};
@@ -36,6 +38,7 @@ export async function atualizarConstrutora(id: string, formData: FormData) {
 
 export async function excluirConstrutora(id: string) {
   await requireSession();
+  const prisma = await getPrisma();
   await prisma.construtora.delete({ where: { id } });
   revalidatePath("/contatos/construtoras");
   return {};

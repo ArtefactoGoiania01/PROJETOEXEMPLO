@@ -1,58 +1,35 @@
-import { getPrisma } from "@/lib/db";
+import { negocios, clientes, usuarios, especificadores, escritorios, etapasFunil, motivosPerda } from "@/lib/mock-data";
 import { KanbanBoardClient } from "@/components/negocios/kanban-board-client";
 
-export default async function FunilPage() {
-  const prisma = await getPrisma();
+export default function FunilPage() {
+  const abertos = negocios.filter((n) => n.status === "ABERTO");
 
-  const [funil, negocios, motivosPerda] = await Promise.all([
-    prisma.funil.findFirst({
-      where: { nome: "VENDAS" },
-      include: { etapas: { orderBy: { ordem: "asc" } } },
-    }),
-    prisma.negocio.findMany({
-      where: { status: "ABERTO", deletedAt: null },
-      include: {
-        cliente: { select: { nome: true } },
-        responsavel: { select: { nome: true } },
-        especificador: { select: { nome: true } },
-        escritorio: { select: { razaoSocial: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.motivoPerda.findMany({
-      where: { ativo: true },
-      orderBy: { nome: "asc" },
-      select: { id: true, nome: true },
-    }),
-  ]);
-
-  if (!funil) {
-    return (
-      <div className="p-8 text-center text-muted-foreground">
-        Nenhum funil &quot;VENDAS&quot; encontrado. Rode <code>npm run db:seed</code>.
-      </div>
-    );
-  }
-
-  const etapas = funil.etapas.map((e) => ({ id: e.id, nome: e.nome, cor: e.cor }));
-
-  const cards = negocios.map((n) => ({
+  const cards = abertos.map((n) => ({
     id: n.id,
     etapaId: n.etapaId,
     numero: n.numero,
-    cliente: n.cliente.nome,
-    responsavel: n.responsavel.nome,
-    especificador: n.especificador?.nome ?? null,
-    escritorio: n.escritorio?.razaoSocial ?? null,
+    cliente: clientes.find((c) => c.id === n.clienteId)?.nome ?? "—",
+    responsavel: usuarios.find((u) => u.id === n.responsavelId)?.nome ?? "—",
+    especificador: especificadores.find((e) => e.id === n.especificadorId)?.nome ?? null,
+    escritorio: escritorios.find((e) => e.id === n.escritorioId)?.razaoSocial ?? null,
     codReferencia: n.codReferencia,
     dataEntrega: n.dataEntrega,
-    valor: n.valor.toString(),
+    valor: n.valor,
     inicio: n.inicio,
     potencialVendas: n.potencialVendas,
     previsaoFechamento: n.previsaoFechamento,
   }));
 
+  const etapas = etapasFunil
+    .slice()
+    .sort((a, b) => a.ordem - b.ordem)
+    .map((e) => ({ id: e.id, nome: e.nome, cor: e.cor }));
+
   return (
-    <KanbanBoardClient etapas={etapas} cards={cards} motivosPerda={motivosPerda} />
+    <KanbanBoardClient
+      etapas={etapas}
+      cards={cards}
+      motivosPerda={motivosPerda.filter((m) => m.ativo)}
+    />
   );
 }

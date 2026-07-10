@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getPrisma } from "@/lib/db";
+import { especificadores, novoId } from "@/lib/mock-data";
 import { especificadorSchema } from "@/lib/validators/contatos";
 
 function parseFormData(formData: FormData) {
@@ -19,10 +19,12 @@ export async function criarEspecificador(formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const { escritorioId, ...rest } = parsed.data;
-  const prisma = await getPrisma();
-  await prisma.especificador.create({
-    data: { ...rest, escritorioId: escritorioId ?? null },
+  especificadores.push({
+    id: novoId("especificador"),
+    nome: parsed.data.nome,
+    whatsapp: parsed.data.whatsapp ?? null,
+    email: parsed.data.email ?? null,
+    escritorioId: parsed.data.escritorioId ?? null,
   });
   revalidatePath("/contatos/especificadores");
   return {};
@@ -33,19 +35,20 @@ export async function atualizarEspecificador(id: string, formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const { escritorioId, ...rest } = parsed.data;
-  const prisma = await getPrisma();
-  await prisma.especificador.update({
-    where: { id },
-    data: { ...rest, escritorioId: escritorioId ?? null },
-  });
+  const item = especificadores.find((e) => e.id === id);
+  if (item) {
+    item.nome = parsed.data.nome;
+    item.whatsapp = parsed.data.whatsapp ?? null;
+    item.email = parsed.data.email ?? null;
+    item.escritorioId = parsed.data.escritorioId ?? null;
+  }
   revalidatePath("/contatos/especificadores");
   return {};
 }
 
 export async function excluirEspecificador(id: string) {
-  const prisma = await getPrisma();
-  await prisma.especificador.delete({ where: { id } });
+  const index = especificadores.findIndex((e) => e.id === id);
+  if (index >= 0) especificadores.splice(index, 1);
   revalidatePath("/contatos/especificadores");
   return {};
 }

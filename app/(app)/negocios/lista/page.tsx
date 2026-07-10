@@ -1,4 +1,4 @@
-import { getPrisma } from "@/lib/db";
+import { negocios, clientes, usuarios, etapasFunil } from "@/lib/mock-data";
 import {
   Table,
   TableBody,
@@ -10,17 +10,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatarData, formatarMoeda, statusNegocioLabels } from "@/lib/labels/pt-BR";
 
-export default async function NegociosListaPage() {
-  const prisma = await getPrisma();
-  const negocios = await prisma.negocio.findMany({
-    where: { deletedAt: null },
-    include: {
-      cliente: { select: { nome: true } },
-      responsavel: { select: { nome: true } },
-      etapa: { select: { nome: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+export default function NegociosListaPage() {
+  const lista = negocios
+    .slice()
+    .sort((a, b) => b.numero - a.numero)
+    .map((n) => ({
+      ...n,
+      clienteNome: clientes.find((c) => c.id === n.clienteId)?.nome ?? "—",
+      responsavelNome: usuarios.find((u) => u.id === n.responsavelId)?.nome ?? "—",
+      etapaNome: etapasFunil.find((e) => e.id === n.etapaId)?.nome ?? "—",
+    }));
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -39,20 +38,20 @@ export default async function NegociosListaPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {negocios.length === 0 ? (
+            {lista.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   Nenhum negócio encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              negocios.map((n) => (
+              lista.map((n) => (
                 <TableRow key={n.id}>
                   <TableCell>#{n.numero}</TableCell>
-                  <TableCell>{n.cliente.nome}</TableCell>
-                  <TableCell>{n.responsavel.nome}</TableCell>
-                  <TableCell>{n.etapa.nome}</TableCell>
-                  <TableCell>{formatarMoeda(n.valor.toString())}</TableCell>
+                  <TableCell>{n.clienteNome}</TableCell>
+                  <TableCell>{n.responsavelNome}</TableCell>
+                  <TableCell>{n.etapaNome}</TableCell>
+                  <TableCell>{formatarMoeda(n.valor)}</TableCell>
                   <TableCell>{formatarData(n.inicio)}</TableCell>
                   <TableCell>
                     <Badge

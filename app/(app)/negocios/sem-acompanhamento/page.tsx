@@ -1,4 +1,4 @@
-import { getPrisma } from "@/lib/db";
+import { negocios, clientes, usuarios, etapasFunil } from "@/lib/mock-data";
 import {
   Table,
   TableBody,
@@ -9,17 +9,15 @@ import {
 } from "@/components/ui/table";
 import { formatarData, formatarMoeda } from "@/lib/labels/pt-BR";
 
-export default async function SemAcompanhamentoPage() {
-  const prisma = await getPrisma();
-  const negocios = await prisma.negocio.findMany({
-    where: { deletedAt: null, status: "ABERTO", atividades: { none: {} } },
-    include: {
-      cliente: { select: { nome: true } },
-      responsavel: { select: { nome: true } },
-      etapa: { select: { nome: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+export default function SemAcompanhamentoPage() {
+  const lista = negocios
+    .filter((n) => n.status === "ABERTO" && !n.temAtividade)
+    .map((n) => ({
+      ...n,
+      clienteNome: clientes.find((c) => c.id === n.clienteId)?.nome ?? "—",
+      responsavelNome: usuarios.find((u) => u.id === n.responsavelId)?.nome ?? "—",
+      etapaNome: etapasFunil.find((e) => e.id === n.etapaId)?.nome ?? "—",
+    }));
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -40,20 +38,20 @@ export default async function SemAcompanhamentoPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {negocios.length === 0 ? (
+            {lista.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                   Nenhum negócio sem acompanhamento.
                 </TableCell>
               </TableRow>
             ) : (
-              negocios.map((n) => (
+              lista.map((n) => (
                 <TableRow key={n.id}>
                   <TableCell>#{n.numero}</TableCell>
-                  <TableCell>{n.cliente.nome}</TableCell>
-                  <TableCell>{n.responsavel.nome}</TableCell>
-                  <TableCell>{n.etapa.nome}</TableCell>
-                  <TableCell>{formatarMoeda(n.valor.toString())}</TableCell>
+                  <TableCell>{n.clienteNome}</TableCell>
+                  <TableCell>{n.responsavelNome}</TableCell>
+                  <TableCell>{n.etapaNome}</TableCell>
+                  <TableCell>{formatarMoeda(n.valor)}</TableCell>
                   <TableCell>{formatarData(n.inicio)}</TableCell>
                 </TableRow>
               ))

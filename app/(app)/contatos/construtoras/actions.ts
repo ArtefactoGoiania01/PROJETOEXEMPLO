@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getPrisma } from "@/lib/db";
+import { construtoras, novoId } from "@/lib/mock-data";
 import { construtoraSchema } from "@/lib/validators/contatos";
 
 function parseFormData(formData: FormData) {
@@ -16,8 +16,7 @@ export async function criarConstrutora(formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const prisma = await getPrisma();
-  await prisma.construtora.create({ data: parsed.data });
+  construtoras.push({ id: novoId("construtora"), nome: parsed.data.nome });
   revalidatePath("/contatos/construtoras");
   return {};
 }
@@ -27,15 +26,15 @@ export async function atualizarConstrutora(id: string, formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const prisma = await getPrisma();
-  await prisma.construtora.update({ where: { id }, data: parsed.data });
+  const item = construtoras.find((c) => c.id === id);
+  if (item) item.nome = parsed.data.nome;
   revalidatePath("/contatos/construtoras");
   return {};
 }
 
 export async function excluirConstrutora(id: string) {
-  const prisma = await getPrisma();
-  await prisma.construtora.delete({ where: { id } });
+  const index = construtoras.findIndex((c) => c.id === id);
+  if (index >= 0) construtoras.splice(index, 1);
   revalidatePath("/contatos/construtoras");
   return {};
 }

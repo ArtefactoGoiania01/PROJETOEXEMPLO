@@ -1,4 +1,4 @@
-import { getPrisma } from "@/lib/db";
+import { especificadores, escritorios } from "@/lib/mock-data";
 import { EntityManager, type EntityField, type EntityColumn } from "@/components/contatos/entity-manager";
 import {
   criarEspecificador,
@@ -6,33 +6,24 @@ import {
   excluirEspecificador,
 } from "./actions";
 
-export default async function EspecificadoresPage() {
-  const prisma = await getPrisma();
-  const [especificadores, escritorios] = await Promise.all([
-    prisma.especificador.findMany({
-      orderBy: { nome: "asc" },
-      include: { escritorio: { select: { razaoSocial: true } } },
-    }),
-    prisma.escritorio.findMany({
-      orderBy: { razaoSocial: "asc" },
-      select: { id: true, razaoSocial: true },
-    }),
-  ]);
-
-  const items = especificadores.map((e) => ({
-    id: e.id,
-    formValues: {
-      nome: e.nome,
-      whatsapp: e.whatsapp ?? "",
-      email: e.email ?? "",
-      escritorioId: e.escritorioId ?? "",
-    },
-    cells: {
-      nome: e.nome,
-      whatsapp: e.whatsapp ?? "—",
-      escritorio: e.escritorio?.razaoSocial ?? "—",
-    },
-  }));
+export default function EspecificadoresPage() {
+  const items = especificadores.map((e) => {
+    const escritorio = escritorios.find((o) => o.id === e.escritorioId);
+    return {
+      id: e.id,
+      formValues: {
+        nome: e.nome,
+        whatsapp: e.whatsapp ?? "",
+        email: e.email ?? "",
+        escritorioId: e.escritorioId ?? "",
+      },
+      cells: {
+        nome: e.nome,
+        whatsapp: e.whatsapp ?? "—",
+        escritorio: escritorio?.razaoSocial ?? "—",
+      },
+    };
+  });
 
   const fields: EntityField[] = [
     { name: "nome", label: "Nome", type: "text" },

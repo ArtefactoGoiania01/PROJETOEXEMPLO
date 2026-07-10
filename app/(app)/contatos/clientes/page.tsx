@@ -1,13 +1,6 @@
-import { getPrisma } from "@/lib/db";
+import { clientes } from "@/lib/mock-data";
 import { EntityManager, type EntityField, type EntityColumn } from "@/components/contatos/entity-manager";
 import { criarCliente, atualizarCliente, excluirCliente } from "./actions";
-
-type EnderecoJson = {
-  logradouro?: string;
-  cidade?: string;
-  estado?: string;
-  cep?: string;
-};
 
 const fields: EntityField[] = [
   { name: "nome", label: "Nome", type: "text" },
@@ -29,16 +22,10 @@ const columns: EntityColumn[] = [
   { key: "documento", label: "CPF/CNPJ" },
 ];
 
-export default async function ClientesPage() {
-  const prisma = await getPrisma();
-  const clientes = await prisma.cliente.findMany({
-    where: { deletedAt: null },
-    orderBy: { nome: "asc" },
-  });
-
-  const items = clientes.map((c) => {
-    const endereco = c.endereco as EnderecoJson | null;
-    return {
+export default function ClientesPage() {
+  const items = clientes
+    .filter((c) => !c.deletedAt)
+    .map((c) => ({
       id: c.id,
       formValues: {
         nome: c.nome,
@@ -46,10 +33,10 @@ export default async function ClientesPage() {
         whatsapp: c.whatsapp ?? "",
         email: c.email ?? "",
         documento: c.documento ?? "",
-        logradouro: endereco?.logradouro ?? "",
-        cidade: endereco?.cidade ?? "",
-        estado: endereco?.estado ?? "",
-        cep: endereco?.cep ?? "",
+        logradouro: c.endereco?.logradouro ?? "",
+        cidade: c.endereco?.cidade ?? "",
+        estado: c.endereco?.estado ?? "",
+        cep: c.endereco?.cep ?? "",
         obs: c.obs ?? "",
       },
       cells: {
@@ -58,8 +45,7 @@ export default async function ClientesPage() {
         email: c.email ?? "—",
         documento: c.documento ?? "—",
       },
-    };
-  });
+    }));
 
   return (
     <EntityManager

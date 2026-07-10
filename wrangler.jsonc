@@ -8,19 +8,4 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   }
-  // Sem banco de dados configurado ainda: o app sobe normalmente, mas
-  // qualquer tela que dependa de dados (Contatos, etc.) falha até um
-  // Postgres real ser conectado. Para conectar um banco real depois:
-  //
-  // 1. npx wrangler hyperdrive create crm-moveis-db --connection-string="postgresql://..."
-  // 2. Adicione de volta o bloco abaixo com o "id" retornado:
-  //
-  //   "hyperdrive": [
-  //     { "binding": "HYPERDRIVE", "id": "<id retornado pelo comando acima>" }
-  //   ],
-  //
-  // 3. No painel Cloudflare, em Settings → Variables and secrets, adicione
-  //    o secret CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
-  //    com a mesma connection string (necessário para o deploy via
-  //    Cloudflare Workers Builds, que roda `opennextjs-cloudflare deploy`).
 }

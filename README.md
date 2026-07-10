@@ -1,71 +1,50 @@
 # CRM de Vendas & Orçamentos — Móveis
 
-CRM self-hosted de vendas e orçamentação para uma empresa de móveis de alto
-padrão: funil de vendas (Kanban), ficha de negócio, orçamentos versionados e
-catálogo de produtos. Interface e domínio em Português (Brasil).
+CRM de exemplo de vendas e orçamentação para uma empresa de móveis de alto
+padrão: funil de vendas (Kanban), ficha de negócio e catálogo de produtos.
+Interface e domínio em Português (Brasil).
 
-> Este repositório está sendo construído em 4 etapas (ver `CLAUDE.md`).
-> **Etapa 1 — Fundação e Cadastros Base** está implementada nesta versão:
-> schema completo do banco, layout global e CRUD de contatos. As demais
-> telas (funil, negócio, orçamento, catálogo, agenda, relatórios,
-> configurações) aparecem como "Em construção" até suas respectivas etapas.
+> Este repositório está sendo construído em etapas (ver `CLAUDE.md`).
+> **Etapa 1 — Cadastros Base** e **Etapa 2 — Funil (Kanban), versão
+> simplificada** estão implementadas. As demais telas aparecem como
+> "Em construção".
 >
-> **Sem autenticação:** este é um deploy de exemplo sem banco de dados
-> hospedado, então o login foi removido — o app inteiro é público.
+> **Sem banco de dados e sem login:** este é um app de teste/exemplo — todos
+> os dados vivem em memória (`lib/mock-data.ts`), recriados a cada início do
+> processo. Não precisa de Postgres, Docker com banco, nem nenhuma
+> configuração para rodar.
 
 ## Stack
 
 Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · componentes estilo
-shadcn/ui · PostgreSQL · Prisma 6 (driver adapter `@prisma/adapter-pg`) ·
-Zod · Vitest · Playwright · Docker Compose ou Cloudflare Workers
-(`@opennextjs/cloudflare` + Hyperdrive).
+shadcn/ui · Zod · Vitest · Docker ou Cloudflare Workers
+(`@opennextjs/cloudflare`).
 
 ## Como rodar
 
-### Opção 1 — Docker Compose (recomendado)
+### Local
+
+```bash
+npm install
+npm run dev
+```
+
+Acesse [http://localhost:3000](http://localhost:3000) — entra direto no
+funil de vendas.
+
+### Docker
 
 ```bash
 docker compose up --build
 ```
 
-Isso sobe o Postgres e a aplicação. Após o primeiro `up`, rode as migrations
-e o seed dentro do container da aplicação:
-
-```bash
-docker compose exec app npx prisma migrate deploy
-docker compose exec app npm run db:seed
-```
-
-Acesse [http://localhost:3000](http://localhost:3000).
-
-### Opção 2 — Local (sem Docker)
-
-Pré-requisitos: Node.js 22+, PostgreSQL 16 rodando localmente.
-
-```bash
-cp .env.example .env
-# ajuste DATABASE_URL em .env se necessário
-
-npm install
-npm run db:migrate   # cria o schema (prisma migrate dev)
-npm run db:seed      # popula usuários, funil de vendas e negócios de exemplo
-npm run dev
-```
-
-Acesse [http://localhost:3000](http://localhost:3000) — a rota raiz redireciona
-para `/negocios` direto, sem login.
-
-### Opção 3 — Cloudflare Workers
+### Cloudflare Workers
 
 ```bash
 npm run cf:deploy
 ```
 
-Por padrão sobe **sem banco de dados** — o app carrega normalmente, mas
-telas que dependem de dados (Contatos etc.) falham até um Postgres real
-ser conectado. Para ligar um Postgres real depois, veja `CLAUDE.md` →
-"Deploy no Cloudflare Workers" (envolve `wrangler hyperdrive create` +
-descomentar um bloco em `wrangler.jsonc`).
+Sem passos extras — não há banco para configurar.
 
 ## Scripts
 
@@ -77,11 +56,6 @@ npm run lint            # ESLint
 npm run typecheck       # tsc --noEmit
 npm run test             # Vitest (unit)
 npm run format           # Prettier
-
-npm run db:migrate    # prisma migrate dev
-npm run db:deploy     # prisma migrate deploy
-npm run db:seed       # prisma/seed.ts
-npm run db:studio     # Prisma Studio
 
 npm run cf:build      # build do Worker (Cloudflare)
 npm run cf:preview    # build + wrangler dev local
@@ -95,5 +69,5 @@ técnicas registradas.
 
 ## CI
 
-`.github/workflows/ci.yml` roda lint, typecheck, testes unitários e build a
-cada push/PR, com um serviço Postgres para aplicar as migrations.
+`.github/workflows/ci.yml` roda lint, typecheck, testes unitários e build
+(Node e Cloudflare) a cada push/PR.

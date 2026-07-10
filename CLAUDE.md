@@ -1,14 +1,16 @@
 # CLAUDE.md
 
 Guia de convenções e mapa do projeto para o CRM de Vendas & Orçamentos (Móveis).
-Atualize este arquivo a cada etapa concluída do PROMPT MESTRE.
 
-> **Desvio deliberado do PROMPT MESTRE:** a Etapa 1 original previa Auth.js
-> com login e RBAC. Isso foi removido a pedido explícito do usuário — este
-> deploy é um exemplo sem banco de dados hospedado, e login sem um banco
-> real acessível não tinha como funcionar. O app inteiro é público (sem
-> tela de login, sem sessão). Se/quando um banco de produção for conectado,
-> reavaliar se autenticação deve voltar.
+> **Desvio deliberado do PROMPT MESTRE:** este é um software de teste/exemplo,
+> sem banco de dados hospedado. A pedido explícito do usuário, o app **não
+> usa PostgreSQL/Prisma nem autenticação** — todos os dados vivem em memória
+> (`lib/mock-data.ts`) e são recriados a cada início de processo. Isso troca
+> persistência real por simplicidade: zero infraestrutura para rodar em
+> qualquer lugar (Docker, Cloudflare Workers) sem configurar nada.
+> Se este projeto evoluir para uso real, isso precisa ser revertido para um
+> banco de verdade (o schema de referência ficou registrado no histórico
+> do git, commit anterior a esta mudança).
 
 ## Stack
 
@@ -17,13 +19,10 @@ Atualize este arquivo a cada etapa concluída do PROMPT MESTRE.
   (o CLI oficial `shadcn` não pode ser usado neste ambiente — `ui.shadcn.com` é
   bloqueado pela política de rede — por isso os componentes foram portados à mão
   a partir dos padrões do shadcn/ui: Radix + CVA + Tailwind)
-- PostgreSQL + Prisma 6 (`prisma-client-js`) via **driver adapter** (`@prisma/adapter-pg`),
-  para o mesmo client funcionar tanto em Node.js (engine local) quanto em
-  Cloudflare Workers (via Hyperdrive, sem engine binário)
+- Dados em memória (`lib/mock-data.ts`) — sem banco de dados
 - Zod em todas as fronteiras (Server Actions)
-- Vitest (unit) + Playwright (E2E, a partir da Etapa 2)
-- Deploy: Docker Compose (app + Postgres) **ou** Cloudflare Workers via
-  `@opennextjs/cloudflare` (ver seção "Deploy no Cloudflare Workers" abaixo)
+- Vitest (unit)
+- Deploy: Docker **ou** Cloudflare Workers via `@opennextjs/cloudflare`
 
 ## Comandos
 
@@ -36,32 +35,23 @@ npm run typecheck     # tsc --noEmit
 npm run test          # Vitest (unit)
 npm run format        # Prettier --write
 
-npm run db:migrate    # prisma migrate dev
-npm run db:deploy     # prisma migrate deploy (produção/CI)
-npm run db:seed       # popula o banco (prisma/seed.ts)
-npm run db:studio     # Prisma Studio
-npm run db:generate   # prisma generate
-
-docker compose up --build   # sobe Postgres + app
+docker compose up --build   # sobe o app (sem banco)
 
 npm run cf:build      # build do Worker (@opennextjs/cloudflare)
 npm run cf:preview    # build + `wrangler dev` local simulando o Worker
 npm run cf:deploy     # build + `wrangler deploy` (Cloudflare Workers)
 ```
 
-### Setup local sem Docker
+### Setup local
 
-1. `cp .env.example .env` e ajuste `DATABASE_URL` se necessário.
-2. Suba um Postgres local (ou use `docker compose up db`).
-3. `npm install`
-4. `npm run db:migrate` (cria o schema)
-5. `npm run db:seed` (popula usuários, funil, clientes e negócios de exemplo)
-6. `npm run dev`
+```bash
+npm install
+npm run dev
+```
 
-Não há login — acessar `http://localhost:3000` já entra direto no app.
-O seed ainda popula `User` (Admin/Vendedor/Assistente) porque `Negocio`,
-`Atividade` etc. referenciam um responsável — é dado de domínio, não
-credencial de acesso.
+Acesse `http://localhost:3000` — entra direto no funil de vendas, sem
+login e sem precisar de banco. Os dados de exemplo (clientes, negócios,
+usuários) já vêm carregados em `lib/mock-data.ts`.
 
 ## Mapa do projeto
 
@@ -69,11 +59,11 @@ credencial de acesso.
 /app
   /(app)/layout.tsx           → shell global: sidebar de ícones + topbar
                                   (`export const dynamic = "force-dynamic"`
-                                  para as páginas de Contatos sempre
-                                  buscarem dados frescos do banco)
+                                  para as páginas sempre lerem o estado
+                                  atual do mock-data)
   /(app)/negocios              → Funil (Kanban) — Etapa 2, versão simplificada
     /lista                     → tabela de todos os negócios
-    /sem-acompanhamento        → negócios abertos sem nenhuma Atividade
+    /sem-acompanhamento        → negócios abertos sem atividade
     /orcamentos, /motivos-perda, /vendedores, /margem-lucro, /cupons,
     /pedidos-compra, /lixeira, /banco-mensagens, /formas-pagamento
                                → submenu de Negócios (placeholders — Etapas 3-4)
@@ -96,18 +86,11 @@ credencial de acesso.
                                   (dados principais + Vendido/Cancelado)
 
 /lib
-  db.ts                         → getPrisma(): resolve o client certo por
-                                   runtime (Node engine local vs. Cloudflare
-                                   Hyperdrive via driver adapter)
+  mock-data.ts                  → todos os "dados" do app: arrays mutáveis
+                                   em memória (clientes, negócios, usuários,
+                                   etapas do funil, motivos de perda etc.)
   labels/pt-BR.ts               → labels e formatação (moeda, data) centralizados
   validators/contatos.ts        → schemas Zod dos cadastros
-
-/prisma
-  schema.prisma                 → schema completo (todas as entidades da Seção 4
-                                   do PROMPT MESTRE já modeladas, mesmo as usadas
-                                   apenas em etapas futuras)
-  seed.ts                       → seed de usuários, funil VENDAS (7 etapas),
-                                   clientes/especificadores/escritórios e negócios
 
 /tests                          → Vitest (unit)
 wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
@@ -118,107 +101,37 @@ wrangler.jsonc, open-next.config.ts → config do deploy em Cloudflare Workers
 - Todo texto de UI do domínio (labels, enums, formatação de moeda/data) fica em
   `lib/labels/pt-BR.ts`. Não hardcode strings de domínio nos componentes.
 - Toda mutação passa por Server Action (`"use server"`) validada com Zod.
-- Componentes Server (páginas) buscam dados via Prisma e passam **dados já
-  serializáveis** (nunca funções) para Client Components — por isso o
-  `EntityManager` recebe `items` com `formValues` e `cells` pré-computados
-  em vez de callbacks de renderização.
-- Soft delete (`deletedAt`) é usado em `Cliente`, `Negocio`, `Orcamento` e
-  `Produto`. `User` usa `ativo=false` como desativação (é referenciado por
-  muitas FKs, não pode ser removido).
+- Componentes Server (páginas) passam **dados já serializáveis** (nunca
+  funções) para Client Components — por isso o `EntityManager` recebe
+  `items` com `formValues` e `cells` pré-computados em vez de callbacks de
+  renderização.
+- `lib/mock-data.ts` exporta arrays mutáveis diretamente — Server Actions
+  fazem `array.push(...)` / `array.find(...)` / `array.splice(...)` no
+  lugar de chamadas ao banco. **Isso não persiste entre deploys nem,
+  necessariamente, entre requisições em serverless** (cada isolate do
+  Cloudflare Workers pode ter seu próprio módulo carregado) — é uma
+  limitação aceita para este app de exemplo, não um bug.
 - Next.js 16 não usa mais `next/font/google` sem risco de dependência de rede
   neste ambiente — o layout usa a pilha de fontes padrão do sistema
   (`font-sans` do Tailwind).
-- `lib/db.ts` exporta `getPrisma()` (assíncrono) em vez de um `prisma`
-  singleton — toda página/Server Action precisa de `const prisma = await
-  getPrisma();`. Isso existe porque em Cloudflare Workers o binding do
-  Hyperdrive só existe no contexto da requisição (não há `process.env`
-  nem client reaproveitável entre requisições como em Node).
 
 ## Decisões técnicas registradas
 
-- **Sem autenticação**: ver aviso no topo do arquivo. `app/(app)/layout.tsx`
-  não faz nenhum controle de acesso; todas as rotas são públicas.
-- **Prisma 6.19 (não 7)**: a v7 mudou o generator (`prisma-client` com output
-  custom + `prisma.config.ts`) e ainda está em adoção recente; fixamos a v6
-  estável para reduzir risco de instabilidade na fundação do projeto.
+- **Sem banco de dados e sem autenticação**: ver aviso no topo do arquivo.
+  `app/(app)/layout.tsx` não faz nenhum controle de acesso; todas as rotas
+  são públicas e todos os dados são mock em memória.
 - **shadcn/ui portado manualmente**: `ui.shadcn.com` está bloqueado pela
   política de rede deste ambiente (`npx shadcn init` falha). Os componentes em
   `components/ui` foram escritos à mão seguindo exatamente os padrões oficiais
   do shadcn/ui (Radix UI + `class-variance-authority` + Tailwind), então
   `npx shadcn@latest add <componente>` deve funcionar normalmente em um
   ambiente com acesso à internet liberado, caso desejado no futuro.
-- **Dockerfile mantém `node_modules` completo** (em vez de `output: "standalone"`)
-  para que `prisma migrate deploy` rode no `CMD` do container sem precisar de
-  um estágio/imagem adicional só para o CLI do Prisma.
-- **`@prisma/adapter-pg` em vez do engine padrão do Prisma**: necessário para
-  o mesmo `PrismaClient` funcionar tanto em Node.js (Docker) quanto em
-  Cloudflare Workers, que não tem filesystem para o engine binário do Prisma.
-  Não é preview feature no Prisma 6.19 (já estável).
-- **`pg-cloudflare` como dependência direta**: o `open-next.config.ts` força
-  reinstalação real desse pacote dentro do bundle da função
-  (`default.install.packages`), porque o tracing padrão do Next só copia a
-  variante vazia (`dist/empty.js`) do pacote — a variante real para o
-  runtime `workerd` (`dist/index.js`) fica atrás de uma export condition que
-  o tracer não resolve sozinho.
 
 ## Deploy no Cloudflare Workers
 
-Alternativa ao Docker, usando [OpenNext](https://opennext.js.org/cloudflare).
-**Por padrão, o Worker sobe sem banco de dados configurado** — o app carrega
-normalmente (não depende de banco para renderizar o shell), mas qualquer
-tela que busque dados (Contatos etc.) falha até um Postgres real ser
-conectado. Isso é intencional: o binding do Hyperdrive (Postgres) é
-opcional e só precisa existir quando você quiser dados de verdade nesse
-ambiente.
-
-`wrangler.jsonc` documenta em comentário os 3 passos para ligar um banco
-real quando você tiver um Postgres acessível pela internet:
-
-```bash
-npx wrangler login
-npx wrangler hyperdrive create crm-moveis-db \
-  --connection-string="postgresql://usuario:senha@host:5432/crm_moveis"
-# copie o "id" retornado, descomente o bloco "hyperdrive" em wrangler.jsonc
-# e cole o id lá
-```
-
-Se o deploy rodar via **Cloudflare Workers Builds** (repositório conectado
-pelo Git — é o caso deste projeto), a Cloudflare detecta o projeto OpenNext
-e substitui `wrangler deploy` por `opennextjs-cloudflare deploy` nos
-bastidores, que sempre tenta emular os bindings como se fosse ambiente
-local antes de publicar. Por isso, ao (re)ativar o Hyperdrive, também é
-preciso configurar em **Settings → Variables and secrets**:
-
-```
-CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE = <a mesma connection string usada no `wrangler hyperdrive create`>
-```
-
-Sem isso (com o binding Hyperdrive presente mas sem esse secret), o deploy
-falha com `UserError: When developing locally, you should use a local
-Postgres connection string to emulate Hyperdrive functionality...` mesmo
-em produção. Com o Hyperdrive **ausente** (estado padrão deste repo), esse
-problema não aparece.
-
-**Deploy:**
-
-```bash
-npm run cf:deploy
-```
-
-Isso builda o Next.js normalmente, empacota com `@opennextjs/cloudflare` e
-publica via `wrangler deploy`. Rode as migrations contra o mesmo Postgres
-antes do primeiro deploy (`DATABASE_URL=... npx prisma migrate deploy`, a
-partir de qualquer máquina com acesso à internet ao banco — o runtime do
-Worker em si não roda migrations).
-
-**Limitações conhecidas desta etapa no runtime Cloudflare** (não bloqueiam o
-deploy, mas ainda não foram adaptadas):
-- Upload de arquivos (`/uploads`) usa disco local — não existe em Workers.
-  Isso só vira relevante a partir da Etapa 3 (imagens de produto);
-  quando chegar lá, vai precisar de um bucket R2.
-- Não testado contra uma instância real da Cloudflare nesta sessão (sem
-  credenciais); validado localmente via `npm run cf:build` +
-  `wrangler deploy --dry-run`, que confirmam bundle e bindings corretos.
+Usando [OpenNext](https://opennext.js.org/cloudflare). Como não há banco de
+dados, não existe nenhuma configuração adicional necessária (sem secrets,
+sem bindings) — `npm run cf:deploy` builda e publica direto.
 
 ## Etapa 2 — versão simplificada (a pedido do usuário)
 

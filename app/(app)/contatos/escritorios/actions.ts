@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getPrisma } from "@/lib/db";
+import { escritorios, novoId } from "@/lib/mock-data";
 import { escritorioSchema } from "@/lib/validators/contatos";
 
 function parseFormData(formData: FormData) {
@@ -19,8 +19,13 @@ export async function criarEscritorio(formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const prisma = await getPrisma();
-  await prisma.escritorio.create({ data: parsed.data });
+  escritorios.push({
+    id: novoId("escritorio"),
+    razaoSocial: parsed.data.razaoSocial,
+    nomeFantasia: parsed.data.nomeFantasia ?? null,
+    documento: parsed.data.documento ?? null,
+    contato: parsed.data.contato ?? null,
+  });
   revalidatePath("/contatos/escritorios");
   return {};
 }
@@ -30,15 +35,20 @@ export async function atualizarEscritorio(id: string, formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const prisma = await getPrisma();
-  await prisma.escritorio.update({ where: { id }, data: parsed.data });
+  const item = escritorios.find((e) => e.id === id);
+  if (item) {
+    item.razaoSocial = parsed.data.razaoSocial;
+    item.nomeFantasia = parsed.data.nomeFantasia ?? null;
+    item.documento = parsed.data.documento ?? null;
+    item.contato = parsed.data.contato ?? null;
+  }
   revalidatePath("/contatos/escritorios");
   return {};
 }
 
 export async function excluirEscritorio(id: string) {
-  const prisma = await getPrisma();
-  await prisma.escritorio.delete({ where: { id } });
+  const index = escritorios.findIndex((e) => e.id === id);
+  if (index >= 0) escritorios.splice(index, 1);
   revalidatePath("/contatos/escritorios");
   return {};
 }

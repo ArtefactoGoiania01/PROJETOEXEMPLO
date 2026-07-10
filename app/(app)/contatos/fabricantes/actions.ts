@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getPrisma } from "@/lib/db";
+import { fabricantes, novoId } from "@/lib/mock-data";
 import { fabricanteSchema } from "@/lib/validators/contatos";
 
 function parseFormData(formData: FormData) {
@@ -16,8 +16,7 @@ export async function criarFabricante(formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const prisma = await getPrisma();
-  await prisma.fabricante.create({ data: parsed.data });
+  fabricantes.push({ id: novoId("fabricante"), nome: parsed.data.nome });
   revalidatePath("/contatos/fabricantes");
   return {};
 }
@@ -27,15 +26,15 @@ export async function atualizarFabricante(id: string, formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
-  const prisma = await getPrisma();
-  await prisma.fabricante.update({ where: { id }, data: parsed.data });
+  const item = fabricantes.find((f) => f.id === id);
+  if (item) item.nome = parsed.data.nome;
   revalidatePath("/contatos/fabricantes");
   return {};
 }
 
 export async function excluirFabricante(id: string) {
-  const prisma = await getPrisma();
-  await prisma.fabricante.delete({ where: { id } });
+  const index = fabricantes.findIndex((f) => f.id === id);
+  if (index >= 0) fabricantes.splice(index, 1);
   revalidatePath("/contatos/fabricantes");
   return {};
 }

@@ -2,35 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getPrisma } from "@/lib/db";
+import { negocios } from "@/lib/mock-data";
 
 export async function moverEtapaNegocio(negocioId: string, etapaId: string) {
-  const prisma = await getPrisma();
-  await prisma.negocio.update({ where: { id: negocioId }, data: { etapaId } });
-  await prisma.timelineEvent.create({
-    data: {
-      negocioId,
-      tipo: "LOG",
-      payload: { mensagem: "Negócio movido de etapa no funil" },
-    },
-  });
+  const negocio = negocios.find((n) => n.id === negocioId);
+  if (negocio) negocio.etapaId = etapaId;
   revalidatePath("/negocios");
   return {};
 }
 
 export async function marcarVendido(negocioId: string) {
-  const prisma = await getPrisma();
-  await prisma.negocio.update({
-    where: { id: negocioId },
-    data: { status: "VENDIDO" },
-  });
-  await prisma.timelineEvent.create({
-    data: {
-      negocioId,
-      tipo: "LOG",
-      payload: { mensagem: "Negócio marcado como Vendido" },
-    },
-  });
+  const negocio = negocios.find((n) => n.id === negocioId);
+  if (negocio) negocio.status = "VENDIDO";
   revalidatePath("/negocios");
   return {};
 }
@@ -39,18 +22,11 @@ export async function marcarCancelado(negocioId: string, motivoPerdaId: string) 
   if (!motivoPerdaId) {
     return { error: "Selecione um motivo de perda." };
   }
-  const prisma = await getPrisma();
-  await prisma.negocio.update({
-    where: { id: negocioId },
-    data: { status: "CANCELADO", motivoPerdaId },
-  });
-  await prisma.timelineEvent.create({
-    data: {
-      negocioId,
-      tipo: "LOG",
-      payload: { mensagem: "Negócio marcado como Cancelado" },
-    },
-  });
+  const negocio = negocios.find((n) => n.id === negocioId);
+  if (negocio) {
+    negocio.status = "CANCELADO";
+    negocio.motivoPerdaId = motivoPerdaId;
+  }
   revalidatePath("/negocios");
   return {};
 }

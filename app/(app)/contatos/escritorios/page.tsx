@@ -1,4 +1,4 @@
-import { getPrisma } from "@/lib/db";
+import { escritorios } from "@/lib/mock-data";
 import { EntityManager, type EntityField, type EntityColumn } from "@/components/contatos/entity-manager";
 import {
   criarEscritorio,
@@ -19,12 +19,7 @@ const columns: EntityColumn[] = [
   { key: "contato", label: "Contato" },
 ];
 
-export default async function EscritoriosPage() {
-  const prisma = await getPrisma();
-  const escritorios = await prisma.escritorio.findMany({
-    orderBy: { razaoSocial: "asc" },
-  });
-
+export default function EscritoriosPage() {
   const items = escritorios.map((e) => ({
     id: e.id,
     formValues: {
